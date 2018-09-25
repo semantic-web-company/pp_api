@@ -27,7 +27,9 @@ from pp_api import utils as u
 
 
 class PoolParty:
-    def __init__(self, server, auth_data=None, session=None, max_retries=None):
+    timeout = None
+
+    def __init__(self, server, auth_data=None, session=None, max_retries=None, timeout=None):
         self.auth_data = auth_data
         self.server = server
         self.session = u.get_session(session, auth_data)
@@ -36,6 +38,7 @@ class PoolParty:
                             backoff_factor=0.3,
                             status_forcelist=[500, 502, 503, 504])
             self.session.mount(self.server, HTTPAdapter(max_retries=retries))
+        self.timeout = timeout
 
     def extract(self, text, pid, lang='en', **kwargs):
         """
@@ -86,11 +89,14 @@ class PoolParty:
             file.seek(0, 2)  # Go to end of file
             f_size_mb = file.tell() / (1024 * 1024)
             file.seek(0)  # Go to start of file
+            countedTimeout = (3.05, int(27 * mb_time_factor * (1 + f_size_mb)))
+            if self.timeout and self.timeout < countedTimeout:
+                countedTimeout = self.timeout
             r = self.session.post(
                 target_url,
                 data=data,
                 files={'file': file},
-                timeout=(3.05, int(27 * mb_time_factor * (1 + f_size_mb)))
+                timeout=countedTimeout
             )
         except Exception as e:
             module_logger.error(traceback.format_exc())
@@ -280,7 +286,8 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         target_url = self.server + '/PoolParty/api/thesaurus/{}/concepts'.format(pid)
         r = self.session.get(
             target_url,
-            params=data
+            params=data,
+            timeout=self.timeout
         )
         try:
             r.raise_for_status()
@@ -308,7 +315,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         )
         results = []
         while True:
-            r = self.session.get(self.server + suffix, params=data)
+            r = self.session.get(self.server + suffix, params=data, timeout=self.timeout)
             r.raise_for_status()
             data['startIndex'] += 20
             results += r.json()
@@ -333,7 +340,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             pid=pid
         )
         target_url = self.server + suffix
-        r = self.session.get(target_url, params=data)
+        r = self.session.get(target_url, params=data, timeout=self.timeout)
         try:
             r.raise_for_status()
         except Exception as e:
@@ -362,7 +369,8 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
 
         while True:
             r = self.session.get(self.server + suffix,
-                            params=data)
+                            params=data,
+                            timeout=self.timeout)
             r.raise_for_status()
             results += r.json()
             if len(r.json()) == 20:
@@ -376,14 +384,14 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
 
     def get_projects(self):
         suffix = '/PoolParty/api/projects'
-        r = self.session.get(self.server + suffix)
+        r = self.session.get(self.server + suffix,timeout=self.timeout)
         r.raise_for_status()
         result = r.json()
         return result
 
     def get_corpora(self, pid):
         suffix = '/PoolParty/api/corpusmanagement/{pid}/corpora'.format(pid=pid)
-        r = self.session.get(self.server + suffix)
+        r = self.session.get(self.server + suffix,timeout=self.timeout)
         r.raise_for_status()
         result = r.json()['jsonCorpusList']
         return result
@@ -395,7 +403,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             'corpusId': corpus_id,
             'includeContent': True
         }
-        r = self.session.get(self.server + suffix, params=data)
+        r = self.session.get(self.server + suffix, params=data,timeout=self.timeout)
         r.raise_for_status()
         result = r.json()
         return result
@@ -407,7 +415,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         data = {
             'corpusId': corpus_id
         }
-        r = self.session.get(self.server + suffix, params=data)
+        r = self.session.get(self.server + suffix, params=data,timeout=self.timeout)
         r.raise_for_status()
         result = r.json()
         return result
@@ -423,7 +431,8 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         results = []
         while True:
             r = self.session.get(self.server + suffix,
-                                 params=data)
+                                 params=data,
+                                 timeout=self.timeout)
             r.raise_for_status()
             data['startIndex'] += 20
             results += r.json()
@@ -442,7 +451,8 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         results = []
         while True:
             r = self.session.get(self.server + suffix,
-                                 params=data)
+                                 params=data,
+                                 timeout=self.timeout)
             r.raise_for_status()
             data['startIndex'] += 20
             results += r.json()
@@ -459,7 +469,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             'format': rdf_format,
             'exportModules': ['concepts']
         }
-        r = self.session.get(self.server + suffix, params=data)
+        r = self.session.get(self.server + suffix, params=data,timeout=self.timeout)
         r.raise_for_status()
         return r.content
 
@@ -470,7 +480,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             'searchString': query_str,
             'language': lang
         }
-        r = self.session.get(self.server + suffix, params=data)
+        r = self.session.get(self.server + suffix, params=data,timeout=self.timeout)
         r.raise_for_status()
         if r.json()['suggestedConcepts']:
             ans = [(x['prefLabel'], x['uri'])
@@ -484,7 +494,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         data = {
             'uri': uri
         }
-        r = self.session.get(self.server + suffix, params=data)
+        r = self.session.get(self.server + suffix, params=data,timeout=self.timeout)
         r.raise_for_status()
         ans = r.json()
         return ans
@@ -504,7 +514,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             data.update({
                 'fromTime': from_.strftime('%Y-%m-%dT%H:%M:%S')
             })
-        r = self.session.get(self.server + suffix, params=data)
+        r = self.session.get(self.server + suffix, params=data,timeout=self.timeout)
         r.raise_for_status()
         return r.json()
 
@@ -512,13 +522,22 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         suffix = '/PoolParty/api/thesaurus/{project}/schemes'.format(
             project=pid
         )
-        r = self.session.get(self.server + suffix)
+        r = self.session.get(self.server + suffix,timeout=self.timeout)
         r.raise_for_status()
         ans = r.json()
         return ans
 
-    def add_new_concept(self, pid, pref_label, parent=None):
-        suffix = '/PoolParty/api/thesaurus/{project}/createConcept'.format(
+    def add_new_concept(self, pid, pref_label, parent=None, suffix=None):
+        """
+        Add a new concept to the taxonomy (API call: createConcept)
+
+        :param pid:
+        :param pref_label: Preferred label in the default language
+        :param parent: URI of the parent Concept Scheme or Concept
+        :param suffix: When URI creation is manual, sets the last URI component.
+        :return:
+        """
+        urlpath = '/PoolParty/api/thesaurus/{project}/createConcept'.format(
             project=pid
         )
         data = {
@@ -526,8 +545,11 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             'parent': (parent if parent is not None else
                        self.get_schemes(pid)[0]['uri'])
         }
-        target_url = self.server + suffix
-        r = self.session.post(target_url, data=data)
+        if suffix:
+            data["suffix"] = suffix
+
+        target_url = os.path.join(self.server, urlpath)
+        r = self.session.post(target_url, data=data, timeout=self.timeout)
         try:
             r.raise_for_status()
         except Exception as e:
@@ -571,7 +593,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             'property': relation_type,
         }
         target_url = self.server + suffix
-        r = self.session.post(target_url, data=data)
+        r = self.session.post(target_url, data=data,timeout=self.timeout)
         try:
             r.raise_for_status()
         except Exception as e:
@@ -604,10 +626,107 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         }
         if lang is not None:
             data['language'] = lang
-        r = self.session.get(self.server + suffix, params=data)
+        r = self.session.get(self.server + suffix, params=data,timeout=self.timeout)
         r.raise_for_status()
         ans = r.json()
         return ans
+
+    def get_childconcepts(self, pid, parent,
+                          properties=None, language=None, transitive=None, workflowStatus=None):
+        """
+        Implements the API call GET /thesaurus/{project}/childconcepts: Return
+        children or descendants in the skos:narrower hierarchy
+
+        :param pid:
+        :param parent:
+        :param properties:  None (default) | "all" | list of properties (URIs) to fetch
+        :param language: Only Concept Schemes with labels in this locale will
+                be displayed. If None (default), use the default locale of the project.
+        :param transitive: If true, return all descendants; otherwise only children.
+                Default: False.
+        :param workflowStatus: Include workflow status information?
+                Default: False
+        :return:
+        """
+
+        suffix = '/PoolParty/api/thesaurus/{project}/childconcepts'.format(project=pid)
+        data = dict(parent=parent)
+
+        if properties == "all":
+            data["properties"] = properties
+        elif properties:
+            data["properties"] = list(properties)
+        # if None, simply leave it out
+
+        if language:
+            data["language"] = language
+        if transitive:
+            data["transitive"] = True
+        if workflowStatus:
+            data["workflowStates"] = True
+
+        r = self.session.get(self.server + suffix, params=data)
+        r.raise_for_status()
+        result = r.json()
+        return result
+
+    def snapshot(self, pid, system=False, note=None):
+        """
+        Trigger a snapshot of the project specified by `pid`.
+
+        :return: JSON structure with status report
+        """
+        suffix = '/PoolParty/api/projects/{project}/snapshot'.format(
+            project=pid
+        )
+
+        data = { 'system': system }
+        if note:
+            data["note"] = note
+
+        r = self.session.post(self.server + suffix, data=data)
+        r.raise_for_status()
+        result = r.json()
+        return result
+
+    def add_literal(self, pid, concept, property, label, language=None):
+        """The api addLiteral call. Was already implemented under another name..."""
+
+        return self.add_label(pid, concept, label_value=label,
+                              label_type=property, language=language)
+
+    def add_custom_attribute(self, pid, resource, property, value, language=None, datatype=None):
+
+        urlpath = '/PoolParty/api/thesaurus/{project}/addCustomAttribute'.format(
+            project=pid
+        )
+        data = {
+            'resource': resource,
+            'property': property,
+            'value': value,
+        }
+        if language:
+            data["language"] = language
+        if datatype:
+            data["datatype"] = datatype
+
+        r = self.session.post(self.server + urlpath, data=data)
+        r.raise_for_status()
+        return r
+
+    def add_custom_relation(self, pid, source, property, target):
+
+        urlpath = '/PoolParty/api/thesaurus/{project}/addCustomRelation'.format(
+            project=pid
+        )
+        data = {
+            'source': source,
+            'property': property,
+            'target': target,
+        }
+        r = self.session.post(self.server + urlpath, data=data)
+        r.raise_for_status()
+        return r
 
 
 if __name__ == '__main__':
