@@ -270,7 +270,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         cpts = self.get_cpts_from_response(r)
         return self.format_nif(text, cpts, doc_uri=doc_uri)
 
-    def get_pref_labels(self, uris, pid):
+    def get_pref_labels(self, uris, pid, language="en"):
         """
         Get prefLabels (in English) of all concepts specified by uris.
 
@@ -281,7 +281,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         data = {
             'concepts': uris,
             'projectId': pid,
-            'language': 'en',
+            'language': language,
         }
         target_url = self.server + '/PoolParty/api/thesaurus/{}/concepts'.format(pid)
         r = self.session.get(
