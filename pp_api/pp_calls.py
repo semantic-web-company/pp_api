@@ -29,7 +29,7 @@ from pp_api import utils as u
 class PoolParty:
     timeout = None
 
-    def __init__(self, server, auth_data=None, session=None, max_retries=None, timeout=None):
+    def __init__(self, server, auth_data=None, session=None, max_retries=None, timeout=None, lang="en"):
         self.auth_data = auth_data
         self.server = server
         self.session = u.get_session(session, auth_data)
@@ -39,8 +39,9 @@ class PoolParty:
                             status_forcelist=[500, 502, 503, 504])
             self.session.mount(self.server, HTTPAdapter(max_retries=retries))
         self.timeout = timeout
+        self.lang=lang
 
-    def extract(self, text, pid, lang='en', **kwargs):
+    def extract(self, text, pid, lang=None, **kwargs):
         """
         Make extract call using project determined by pid.
 
@@ -52,12 +53,13 @@ class PoolParty:
         :param lang: language
         :return: response object
         """
+        lang = self.lang if lang == None else lang
         tmp_file = tempfile.NamedTemporaryFile(delete=False, mode='w+b')
         tmp_file.write(str(text).encode('utf8'))
         tmp_file.seek(0)
         return self.extract_from_file(tmp_file, pid, lang=lang, **kwargs)
 
-    def extract_from_file(self, file, pid, mb_time_factor=3, lang='en',
+    def extract_from_file(self, file, pid, mb_time_factor=3, lang=None,
                           **kwargs):
         """
         Make extract call using project determined by pid.
@@ -66,6 +68,7 @@ class PoolParty:
         :param pid: id of project
         :return: response object
         """
+        lang = self.lang if lang == None else lang
         data = {
             'numberOfConcepts': 100000,
             'numberOfTerms': 100000,
@@ -270,7 +273,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         cpts = self.get_cpts_from_response(r)
         return self.format_nif(text, cpts, doc_uri=doc_uri)
 
-    def get_pref_labels(self, uris, pid, language="en"):
+    def get_pref_labels(self, uris, pid, lang=None):
         """
         Get prefLabels (in English) of all concepts specified by uris.
 
@@ -278,10 +281,11 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         :param pid: id of project
         :return: response object
         """
+        lang = self.lang if lang == None else lang
         data = {
             'concepts': uris,
             'projectId': pid,
-            'language': language,
+            'language': lang,
         }
         target_url = self.server + '/PoolParty/api/thesaurus/{}/concepts'.format(pid)
         r = self.session.get(
