@@ -93,7 +93,7 @@ class PoolParty:
             f_size_mb = file.tell() / (1024 * 1024)
             file.seek(0)  # Go to start of file
             countedTimeout = (3.05, int(27 * mb_time_factor * (1 + f_size_mb)))
-            if self.timeout and self.timeout < countedTimeout:
+            if self.timeout:
                 countedTimeout = self.timeout
             r = self.session.post(
                 target_url,
