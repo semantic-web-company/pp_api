@@ -1,7 +1,5 @@
 import logging
 
-from requests.exceptions import HTTPError
-
 from pp_api import utils as u
 from pp_api import pp_calls
 
@@ -29,7 +27,6 @@ class GraphSearch:
         """
 
         u.check_status_and_raise(response, data=data, log_text=True, logger=module_logger)
-
 
     def delete(self, search_space_id, id_=None, source=None):
         if id_ is not None:
@@ -169,7 +166,7 @@ class GraphSearch:
         r = pp.extract(
             pid=pid, text=text_to_extract, lang=lang, **kwargs
         )
-        cpts = pp_calls.get_cpts_from_response(r)
+        cpts = pp.get_cpts_from_response(r)
         self.create_with_freqs(
             id_=id_, title=title, author=author,
             date=date, text=text, cpts=cpts, update=update,
