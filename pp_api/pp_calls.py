@@ -2,7 +2,6 @@ import os
 import uuid
 
 import requests
-from requests.exceptions import HTTPError
 from requests.packages.urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
 import tempfile
@@ -24,8 +23,6 @@ except ImportError:
 from pp_api import utils as u
 
 
-
-
 class PoolParty:
     def __init__(self, server, auth_data=None, session=None, max_retries=None):
         self.auth_data = auth_data
@@ -41,12 +38,14 @@ class PoolParty:
         """
         Make extract call using project determined by pid.
 
-        :param auth_data:
-        :param session:
         :param text: text
         :param pid: id of project
-        :param server: server url
         :param lang: language
+
+        Other parameters:
+        :param auth_data:
+        :param session:
+        :param server: server url
         :return: response object
         """
         tmp_file = tempfile.NamedTemporaryFile(delete=False, mode='w+b')
@@ -58,11 +57,14 @@ class PoolParty:
                           **kwargs):
         """
         Make extract call using project determined by pid.
+        NOTE: Swallows all exceptions
 
-        :param text: text
+        :param file: filename
         :param pid: id of project
+        :param mb_time_factor: timeout scale factor (relative to file size)
+        :param lang: language
         :return: response object
-        """
+                """
         data = {
             'numberOfConcepts': 100000,
             'numberOfTerms': 100000,
@@ -97,32 +99,56 @@ class PoolParty:
         finally:
             file.close()
         module_logger.debug('call took {:0.3f}'.format(time() - start))
+
         if not 'r' in locals():
             return None
-        try:
-            r.raise_for_status()
-        except Exception as e:
-            msg = 'JSON data of the failed POST request: {}\n'.format(data)
-            msg += 'URL of the failed POST request: {}'.format(target_url)
-            module_logger.error(msg)
-            response = r.json()
-            if "errorMessage" in response:
-                extra = "API error message: {}\n".format(response["errorMessage"])
-                raise type(e)(str(e) + "\n" + extra)
-            else:
-                raise e
+        self.raise_for_status(r)
+        # try:
+        #     r.raise_for_status()
+        # except Exception as e:
+        #     msg = 'JSON data of the failed POST request: {}\n'.format(data)
+        #     msg += 'URL of the failed POST request: {}'.format(target_url)
+        #     module_logger.error(msg)
+        #     response = r.json()
+        #     if "errorMessage" in response:
+        #         extra = "API error message: {}\n".format(response["errorMessage"])
+        #         raise type(e)(str(e) + "\n" + extra)
+        #     else:
+        #         raise e
+
         return r
+
+
+    def raise_for_status(self, response, data=None):
+        """
+        Call the raise_for_status() method of the response, which will
+        raise an HTTPError if an error response was received.
+        But enrich it with information from our API, and also log
+        the call parameters to module_logger.
+
+        :param response: `requests` response object
+        :param data: dictionary of call parameters, to include in log
+        :return: None
+        """
+
+        u.check_status_and_raise(response, data=data, logger=module_logger)
+
 
     @staticmethod
     def get_cpts_from_response(r):
         attributes = ['prefLabel', 'frequencyInDocument', 'uri',
+                      'score',
                       'transitiveBroaderConcepts', 'transitiveBroaderTopConcepts',
                       'relatedConcepts']
         # matchingLabels is checked and saved as well
         extr_cpts = []
         if r is None:
             return extr_cpts
-        concept_container = r.json()
+        elif isinstance(r, requests.Response):
+            concept_container = r.json()
+        else:
+            # Accept parsed json instead of the request object
+            concept_container = r
 
         if not 'concepts' in concept_container:
             if not 'document' in concept_container:
@@ -287,13 +313,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             target_url,
             params=data
         )
-        try:
-            r.raise_for_status()
-        except Exception as e:
-            msg = 'JSON data of the failed POST request: {}\n'.format(data)
-            msg += 'URL of the failed POST request: {}'.format(target_url)
-            module_logger.error(msg)
-            raise e
+        self.raise_for_status(r, data)
         return [x['prefLabel'] for x in r.json()]
 
     def get_cpt_corpus_freqs(self, corpus_id, pid):
@@ -314,7 +334,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         results = []
         while True:
             r = self.session.get(self.server + suffix, params=data)
-            r.raise_for_status()
+            self.raise_for_status(r, data)
             data['startIndex'] += 20
             results += r.json()
             if not len(r.json()):
@@ -339,13 +359,8 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         )
         target_url = self.server + suffix
         r = self.session.get(target_url, params=data)
-        try:
-            r.raise_for_status()
-        except Exception as e:
-            msg = 'JSON data of the failed POST request: {}\n'.format(data)
-            msg += 'URL of the failed POST request: {}'.format(target_url)
-            module_logger.error(msg)
-            raise e
+        self.raise_for_status(r, data)
+
         broaders = [(x['uri'], x['prefLabel']) for x in
                     r.json()[0]['conceptPath']]
         cpt_scheme = r.json()[0]['conceptScheme']
@@ -368,7 +383,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         while True:
             r = self.session.get(self.server + suffix,
                             params=data)
-            r.raise_for_status()
+            self.raise_for_status(r, data)
             results += r.json()
             if len(r.json()) == 20:
                 data['startIndex'] += len(r.json())
@@ -382,14 +397,14 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
     def get_projects(self):
         suffix = '/PoolParty/api/projects'
         r = self.session.get(self.server + suffix)
-        r.raise_for_status()
+        self.raise_for_status(r)
         result = r.json()
         return result
 
     def get_corpora(self, pid):
         suffix = '/PoolParty/api/corpusmanagement/{pid}/corpora'.format(pid=pid)
         r = self.session.get(self.server + suffix)
-        r.raise_for_status()
+        self.raise_for_status(r)
         result = r.json()['jsonCorpusList']
         return result
 
@@ -401,7 +416,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             'includeContent': True
         }
         r = self.session.get(self.server + suffix, params=data)
-        r.raise_for_status()
+        self.raise_for_status(r, data)
         result = r.json()
         return result
 
@@ -413,7 +428,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             'corpusId': corpus_id
         }
         r = self.session.get(self.server + suffix, params=data)
-        r.raise_for_status()
+        self.raise_for_status(r, data)
         result = r.json()
         return result
 
@@ -429,7 +444,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         while True:
             r = self.session.get(self.server + suffix,
                                  params=data)
-            r.raise_for_status()
+            self.raise_for_status(r, data)
             data['startIndex'] += 20
             results += r.json()
             if not len(r.json()):
@@ -448,7 +463,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         while True:
             r = self.session.get(self.server + suffix,
                                  params=data)
-            r.raise_for_status()
+            self.raise_for_status(r, data)
             data['startIndex'] += 20
             results += r.json()
             if not len(r.json()):
@@ -465,7 +480,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             'exportModules': ['concepts']
         }
         r = self.session.get(self.server + suffix, params=data)
-        r.raise_for_status()
+        self.raise_for_status(r, data)
         return r.content
 
     def get_autocomplete(self, query_str, pid, lang='en'):
@@ -476,7 +491,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             'language': lang
         }
         r = self.session.get(self.server + suffix, params=data)
-        r.raise_for_status()
+        self.raise_for_status(r, data)
         if r.json()['suggestedConcepts']:
             ans = [(x['prefLabel'], x['uri'])
                    for x in r.json()['suggestedConcepts']]
@@ -490,7 +505,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             'uri': uri
         }
         r = self.session.get(self.server + suffix, params=data)
-        r.raise_for_status()
+        self.raise_for_status(r, data)
         ans = r.json()
         return ans
 
@@ -510,7 +525,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
                 'fromTime': from_.strftime('%Y-%m-%dT%H:%M:%S')
             })
         r = self.session.get(self.server + suffix, params=data)
-        r.raise_for_status()
+        self.raise_for_status(r, data)
         return r.json()
 
     def get_schemes(self, pid):
@@ -518,7 +533,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             project=pid
         )
         r = self.session.get(self.server + suffix)
-        r.raise_for_status()
+        self.raise_for_status(r)
         ans = r.json()
         return ans
 
@@ -545,13 +560,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
 
         target_url = self.server + urlpath
         r = self.session.post(target_url, data=data)
-        try:
-            r.raise_for_status()
-        except Exception as e:
-            msg = 'JSON data of the failed POST request: {}\n'.format(data)
-            msg += 'URL of the failed POST request: {}'.format(target_url)
-            module_logger.error(msg)
-            raise e
+        self.raise_for_status(r, data)
         ans = r.json()
         return ans
 
@@ -568,13 +577,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         }
         target_url = self.server + suffix
         r = self.session.post(target_url, data=data)
-        try:
-            r.raise_for_status()
-        except Exception as e:
-            msg = 'JSON data of the failed POST request: {}\n'.format(data)
-            msg += 'URL of the failed POST request: {}'.format(target_url)
-            module_logger.error(msg)
-            raise e
+        self.raise_for_status(r, data)
         return r
 
     def add_relation(self, pid, source_uri, target_uri,
@@ -589,13 +592,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         }
         target_url = self.server + suffix
         r = self.session.post(target_url, data=data)
-        try:
-            r.raise_for_status()
-        except Exception as e:
-            msg = 'JSON data of the failed POST request: {}\n'.format(data)
-            msg += 'URL of the failed POST request: {}'.format(target_url)
-            module_logger.error(msg)
-            raise e
+        self.raise_for_status(r, data)
         return r
 
     def add_narrower(self, pid, broader_uri, narrower_uri):
@@ -622,7 +619,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         if lang is not None:
             data['language'] = lang
         r = self.session.get(self.server + suffix, params=data)
-        r.raise_for_status()
+        self.raise_for_status(r, data)
         ans = r.json()
         return ans
 
@@ -661,7 +658,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             data["workflowStates"] = True
 
         r = self.session.get(self.server + suffix, params=data)
-        r.raise_for_status()
+        self.raise_for_status(r, data)
         result = r.json()
         return result
 
@@ -680,7 +677,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             data["note"] = note
 
         r = self.session.post(self.server + suffix, data=data)
-        r.raise_for_status()
+        self.raise_for_status(r, data)
         result = r.json()
         return result
 
@@ -706,7 +703,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             data["datatype"] = datatype
 
         r = self.session.post(self.server + urlpath, data=data)
-        r.raise_for_status()
+        self.raise_for_status(r, data)
         return r
 
     def add_custom_relation(self, pid, source, property, target):
@@ -720,7 +717,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             'target': target,
         }
         r = self.session.post(self.server + urlpath, data=data)
-        r.raise_for_status()
+        self.raise_for_status(r, data)
         return r
 
 

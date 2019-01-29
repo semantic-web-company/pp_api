@@ -16,6 +16,21 @@ class GraphSearch:
         self.auth_data = auth_data
         self.session = session
 
+    def raise_for_status(self, response, data=None):
+        """
+        Call the raise_for_status() method of the response, which will
+        raise an HTTPError if an error response was received.
+        But enrich it with information from our API, and also log
+        additional information to module_logger.
+
+        :param response: `requests` response object
+        :param data: dictionary of call parameters, to include in log
+        :return: None
+        """
+
+        u.check_status_and_raise(response, data=data, log_text=True, logger=module_logger)
+
+
     def delete(self, search_space_id, id_=None, source=None):
         if id_ is not None:
             suffix = '/GraphSearch/api/content/delete/id'
@@ -35,14 +50,8 @@ class GraphSearch:
             dest_url,
             json=data,
         )
-        try:
-            r.raise_for_status()
-        except Exception as e:
-            msg = 'JSON data of the failed POST request: {}\n'.format(data)
-            msg += 'URL of the failed POST request: {}\n'.format(dest_url)
-            msg += 'Response text: {}'.format(r.text)
-            module_logger.error(msg)
-            raise e
+
+        self.raise_for_status(r, data)
         return r
 
     def clean(self, search_space_id):
@@ -55,7 +64,7 @@ class GraphSearch:
         )
         for result in r.json()['results']:
             id_ = result['id']
-            r = self.delete(
+            r2_ = self.delete(
                 id_=id_,
                 search_space_id=search_space_id
             )
@@ -65,6 +74,7 @@ class GraphSearch:
         Check if document with specified uri is contained in GS
 
         :param uri: document uri
+        :param search_space_id:
         :return: Boolean
         """
         id_filter = self.filter_id(id_=uri)
@@ -109,14 +119,8 @@ class GraphSearch:
             dest_url,
             json=data,
         )
-        try:
-            r.raise_for_status()
-        except Exception as e:
-            msg = 'JSON data of the failed POST request: {}\n'.format(data)
-            msg += 'URL of the failed POST request: {}\n'.format(dest_url)
-            msg += 'Response text: {}'.format(r.text)
-            module_logger.error(msg)
-            raise e
+
+        self.raise_for_status(r, data)
         return r
 
     def create_with_freqs(self, id_, title, author, date, cpts, search_space_id,
@@ -208,14 +212,8 @@ class GraphSearch:
             dest_url,
             json=data,
         )
-        try:
-            r.raise_for_status()
-        except Exception as e:
-            msg = 'JSON data of the failed POST request: {}\n'.format(data)
-            msg += 'URL of the failed POST request: {}\n'.format(dest_url)
-            msg += 'Response text: {}'.format(r.text)
-            module_logger.error(msg)
-            raise e
+
+        self.raise_for_status(r, data)
         return r
 
     @staticmethod
@@ -255,8 +253,8 @@ class GraphSearch:
     def filter_date(start_date=None, finish_date=None):
         """
 
-        :param start: datetime object
-        :param finish: datetime object
+        :param start_date: datetime object
+        :param finish_date: datetime object
         :return:
         """
         start_str = (start_date.strftime('%Y-%m-%dT%H:%M:%S.000Z')
@@ -278,12 +276,8 @@ class GraphSearch:
         r = self.session.get(
             dest_url,
         )
-        try:
-            r.raise_for_status()
-        except HTTPError as e:
-            msg = 'URL of the failed POST request: {}\n'.format(dest_url)
-            msg += 'Response text: {}'.format(r.text)
-            module_logger.error(msg)
+
+        self.raise_for_status(r)
         return r
 
     def add_field(self, space_id, field, label):
@@ -298,12 +292,16 @@ class GraphSearch:
             params=data,
             # data=data
         )
-        try:
-            r.raise_for_status()
-        except HTTPError as e:
-            print(r.request.__dict__)
-            print(r.text)
-            raise e
+
+        self.raise_for_status(r, data)
+        # # This printed request.__dict__, for some reason; so the unified
+        # # code is a change in behavior
+        # try:
+        #     r.raise_for_status()
+        # except HTTPError as e:
+        #     print(r.request.__dict__)
+        #     print(r.text)
+        #     raise e
         return r
 
     def remove_field(self, space_id, field):
@@ -318,14 +316,8 @@ class GraphSearch:
             params=data,
             # data=data
         )
-        try:
-            r.raise_for_status()
-        except HTTPError as e:
-            msg = 'JSON data of the failed POST request: {}\n'.format(data)
-            msg += 'URL of the failed POST request: {}\n'.format(dest_url)
-            msg += 'Response text: {}'.format(r.text)
-            module_logger.error(msg)
-            raise e
+
+        self.raise_for_status(r, data)
         return r
 
 
