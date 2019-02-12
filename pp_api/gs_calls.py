@@ -8,11 +8,14 @@ module_logger = logging.getLogger(__name__)
 
 
 class GraphSearch:
-    def __init__(self, server, auth_data=None, session=None):
+    timeout = None
+
+    def __init__(self, server, auth_data=None, session=None, timeout=None):
         self.server = server
         session = u.get_session(session, auth_data)
         self.auth_data = auth_data
         self.session = session
+        self.timeout = timeout
 
     def raise_for_status(self, response, data=None):
         """
@@ -46,6 +49,7 @@ class GraphSearch:
         r = self.session.post(
             dest_url,
             json=data,
+            timeout=self.timeout
         )
 
         self.raise_for_status(r, data)
@@ -115,6 +119,7 @@ class GraphSearch:
         r = self.session.post(
             dest_url,
             json=data,
+            timeout=self.timeout
         )
 
         self.raise_for_status(r, data)
@@ -208,6 +213,7 @@ class GraphSearch:
         r = self.session.post(
             dest_url,
             json=data,
+            timeout=self.timeout
         )
 
         self.raise_for_status(r, data)
@@ -272,6 +278,7 @@ class GraphSearch:
         dest_url = self.server + suffix
         r = self.session.get(
             dest_url,
+            timeout=self.timeout
         )
 
         self.raise_for_status(r)
@@ -287,6 +294,7 @@ class GraphSearch:
         r = self.session.post(
             self.server + suffix,
             params=data,
+            timeout=self.timeout
             # data=data
         )
 
@@ -311,6 +319,7 @@ class GraphSearch:
         r = self.session.post(
             dest_url,
             params=data,
+            timeout=self.timeout
             # data=data
         )
 

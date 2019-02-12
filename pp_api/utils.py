@@ -21,7 +21,7 @@ def get_auth_data(env_username='PP_USER', env_password='PP_PASSWORD'):
     return auth_data
 
 
-def subdict(fromdict, fields, default=None, *, force=False):
+def subdict(fromdict, fields, default=None,  force=False):
     """
     Return a dictionary with the specified selection of keys from `fromdict`.
     If `default` is not None or `force` is true, set missing requested keys to

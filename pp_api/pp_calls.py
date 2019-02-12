@@ -24,7 +24,9 @@ from pp_api import utils as u
 
 
 class PoolParty:
-    def __init__(self, server, auth_data=None, session=None, max_retries=None):
+    timeout = None
+
+    def __init__(self, server, auth_data=None, session=None, max_retries=None, timeout=None, lang="en"):
         self.auth_data = auth_data
         self.server = server
         self.session = u.get_session(session, auth_data)
@@ -33,8 +35,10 @@ class PoolParty:
                             backoff_factor=0.3,
                             status_forcelist=[500, 502, 503, 504])
             self.session.mount(self.server, HTTPAdapter(max_retries=retries))
+        self.timeout = timeout
+        self.lang=lang
 
-    def extract(self, text, pid, lang='en', **kwargs):
+    def extract(self, text, pid, lang=None, **kwargs):
         """
         Make extract call using project determined by pid.
 
@@ -48,12 +52,13 @@ class PoolParty:
         :param server: server url
         :return: response object
         """
+        lang = self.lang if lang == None else lang
         tmp_file = tempfile.NamedTemporaryFile(delete=False, mode='w+b')
         tmp_file.write(str(text).encode('utf8'))
         tmp_file.seek(0)
         return self.extract_from_file(tmp_file, pid, lang=lang, **kwargs)
 
-    def extract_from_file(self, file, pid, mb_time_factor=3, lang='en',
+    def extract_from_file(self, file, pid, mb_time_factor=3, lang=None,
                           **kwargs):
         """
         Make extract call using project determined by pid.
@@ -64,7 +69,8 @@ class PoolParty:
         :param mb_time_factor: timeout scale factor (relative to file size)
         :param lang: language
         :return: response object
-                """
+        """
+        lang = self.lang if lang == None else lang
         data = {
             'numberOfConcepts': 100000,
             'numberOfTerms': 100000,
@@ -88,11 +94,14 @@ class PoolParty:
             file.seek(0, 2)  # Go to end of file
             f_size_mb = file.tell() / (1024 * 1024)
             file.seek(0)  # Go to start of file
+            countedTimeout = (3.05, int(27 * mb_time_factor * (1 + f_size_mb)))
+            if self.timeout:
+                countedTimeout = self.timeout
             r = self.session.post(
                 target_url,
                 data=data,
                 files={'file': file},
-                timeout=(3.05, int(27 * mb_time_factor * (1 + f_size_mb)))
+                timeout=countedTimeout
             )
         except Exception as e:
             module_logger.error(traceback.format_exc())
@@ -295,7 +304,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         cpts = self.get_cpts_from_response(r)
         return self.format_nif(text, cpts, doc_uri=doc_uri)
 
-    def get_pref_labels(self, uris, pid):
+    def get_pref_labels(self, uris, pid, lang=None):
         """
         Get prefLabels (in English) of all concepts specified by uris.
 
@@ -303,15 +312,17 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         :param pid: id of project
         :return: response object
         """
+        lang = self.lang if lang == None else lang
         data = {
             'concepts': uris,
             'projectId': pid,
-            'language': 'en',
+            'language': lang,
         }
         target_url = self.server + '/PoolParty/api/thesaurus/{}/concepts'.format(pid)
         r = self.session.get(
             target_url,
-            params=data
+            params=data,
+            timeout=self.timeout
         )
         self.raise_for_status(r, data)
         return [x['prefLabel'] for x in r.json()]
@@ -333,7 +344,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         )
         results = []
         while True:
-            r = self.session.get(self.server + suffix, params=data)
+            r = self.session.get(self.server + suffix, params=data, timeout=self.timeout)
             self.raise_for_status(r, data)
             data['startIndex'] += 20
             results += r.json()
@@ -358,7 +369,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             pid=pid
         )
         target_url = self.server + suffix
-        r = self.session.get(target_url, params=data)
+        r = self.session.get(target_url, params=data, timeout=self.timeout)
         self.raise_for_status(r, data)
 
         broaders = [(x['uri'], x['prefLabel']) for x in
@@ -382,8 +393,10 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
 
         while True:
             r = self.session.get(self.server + suffix,
-                            params=data)
+                            params=data,
+                            timeout=self.timeout)
             self.raise_for_status(r, data)
+
             results += r.json()
             if len(r.json()) == 20:
                 data['startIndex'] += len(r.json())
@@ -396,14 +409,14 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
 
     def get_projects(self):
         suffix = '/PoolParty/api/projects'
-        r = self.session.get(self.server + suffix)
+        r = self.session.get(self.server + suffix, timeout=self.timeout)
         self.raise_for_status(r)
         result = r.json()
         return result
 
     def get_corpora(self, pid):
         suffix = '/PoolParty/api/corpusmanagement/{pid}/corpora'.format(pid=pid)
-        r = self.session.get(self.server + suffix)
+        r = self.session.get(self.server + suffix, timeout=self.timeout)
         self.raise_for_status(r)
         result = r.json()['jsonCorpusList']
         return result
@@ -415,7 +428,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             'corpusId': corpus_id,
             'includeContent': True
         }
-        r = self.session.get(self.server + suffix, params=data)
+        r = self.session.get(self.server + suffix, params=data, timeout=self.timeout)
         self.raise_for_status(r, data)
         result = r.json()
         return result
@@ -427,7 +440,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         data = {
             'corpusId': corpus_id
         }
-        r = self.session.get(self.server + suffix, params=data)
+        r = self.session.get(self.server + suffix, params=data, timeout=self.timeout)
         self.raise_for_status(r, data)
         result = r.json()
         return result
@@ -443,7 +456,8 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         results = []
         while True:
             r = self.session.get(self.server + suffix,
-                                 params=data)
+                                 params=data,
+                                 timeout=self.timeout)
             self.raise_for_status(r, data)
             data['startIndex'] += 20
             results += r.json()
@@ -462,7 +476,8 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         results = []
         while True:
             r = self.session.get(self.server + suffix,
-                                 params=data)
+                                 params=data,
+                                 timeout=self.timeout)
             self.raise_for_status(r, data)
             data['startIndex'] += 20
             results += r.json()
@@ -479,7 +494,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             'format': rdf_format,
             'exportModules': ['concepts']
         }
-        r = self.session.get(self.server + suffix, params=data)
+        r = self.session.get(self.server + suffix, params=data, timeout=self.timeout)
         self.raise_for_status(r, data)
         return r.content
 
@@ -490,7 +505,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             'searchString': query_str,
             'language': lang
         }
-        r = self.session.get(self.server + suffix, params=data)
+        r = self.session.get(self.server + suffix, params=data, timeout=self.timeout)
         self.raise_for_status(r, data)
         if r.json()['suggestedConcepts']:
             ans = [(x['prefLabel'], x['uri'])
@@ -504,7 +519,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         data = {
             'uri': uri
         }
-        r = self.session.get(self.server + suffix, params=data)
+        r = self.session.get(self.server + suffix, params=data, timeout=self.timeout)
         self.raise_for_status(r, data)
         ans = r.json()
         return ans
@@ -524,7 +539,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             data.update({
                 'fromTime': from_.strftime('%Y-%m-%dT%H:%M:%S')
             })
-        r = self.session.get(self.server + suffix, params=data)
+        r = self.session.get(self.server + suffix, params=data, timeout=self.timeout)
         self.raise_for_status(r, data)
         return r.json()
 
@@ -532,7 +547,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         suffix = '/PoolParty/api/thesaurus/{project}/schemes'.format(
             project=pid
         )
-        r = self.session.get(self.server + suffix)
+        r = self.session.get(self.server + suffix, timeout=self.timeout)
         self.raise_for_status(r)
         ans = r.json()
         return ans
@@ -559,7 +574,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             data["suffix"] = suffix
 
         target_url = self.server + urlpath
-        r = self.session.post(target_url, data=data)
+        r = self.session.post(target_url, data=data, timeout=self.timeout)
         self.raise_for_status(r, data)
         ans = r.json()
         return ans
@@ -591,7 +606,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             'property': relation_type,
         }
         target_url = self.server + suffix
-        r = self.session.post(target_url, data=data)
+        r = self.session.post(target_url, data=data, timeout=self.timeout)
         self.raise_for_status(r, data)
         return r
 
@@ -618,7 +633,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         }
         if lang is not None:
             data['language'] = lang
-        r = self.session.get(self.server + suffix, params=data)
+        r = self.session.get(self.server + suffix, params=data, timeout=self.timeout)
         self.raise_for_status(r, data)
         ans = r.json()
         return ans
