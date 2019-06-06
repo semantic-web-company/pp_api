@@ -3,6 +3,7 @@ import uuid
 
 import requests
 from requests.exceptions import HTTPError
+from requests.compat import urljoin
 from requests.packages.urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
 import tempfile
@@ -149,7 +150,7 @@ class PoolParty:
             'text': text
         }
         data.update(kwargs)
-        target_url = os.path.join(self.server, '/extractor/api/extract')
+        target_url = urljoin(self.server, '/extractor/api/extract')
         start = time()
         try:
             # Findout filesize
