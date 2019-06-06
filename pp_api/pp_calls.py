@@ -149,7 +149,7 @@ class PoolParty:
             'text': text
         }
         data.update(kwargs)
-        target_url = self.server + '/extractor/api/extract'
+        target_url = os.path.join(self.server, '/extractor/api/extract')
         start = time()
         try:
             # Findout filesize
