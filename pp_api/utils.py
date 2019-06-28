@@ -53,7 +53,11 @@ def check_status_and_raise(response, logger=None, data=None, log_text=False):
     method = response.request.method
     target_url = response.request.url
 
-    content = response.json()
+    # json() chokes on empty response text, so bypass it
+    if response.text:
+        content = response.json()
+    else:
+        content = {}
 
     # Our JSON error messages are labelled inconsistently:
     # "errorMessage" for Extractor bad arguments?
@@ -61,6 +65,8 @@ def check_status_and_raise(response, logger=None, data=None, log_text=False):
     # "responseBase -> message" for "Concept Index is empty" == no extraction model
     if not message and "responseBase" in content:
         message = content["responseBase"].get("message", "")
+
+    # response.reason seems to be already included in the exception
 
     if message:
         extra = "API error message: {}\n".format(message)

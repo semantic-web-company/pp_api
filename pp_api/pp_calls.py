@@ -28,6 +28,8 @@ class PoolParty:
 
     def __init__(self, server, auth_data=None, session=None, max_retries=None, timeout=None, lang="en"):
         self.auth_data = auth_data
+        if server.endswith("/"):
+            server = server[:-1]
         self.server = server
         self.session = u.get_session(session, auth_data)
         if max_retries is not None:
