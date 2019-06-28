@@ -96,14 +96,16 @@ class PoolParty:
                 file = open(file, 'rb')
             file_text = file.read()
             # Findout filesize
-            file.seek(0, 2)  # Go to end of file
-            f_size_mb = file.tell() / (1024 * 1024)
-            file.seek(0)  # Go to start of file
-            countedTimeout = (3.05, int(27 * mb_time_factor * (1 + f_size_mb)))
             if self.timeout:
                 countedTimeout = self.timeout
+            else:
+                file.seek(0, 2)  # Go to end of file
+                f_size_mb = file.tell() / (1024 * 1024)
+                file.seek(0)  # Go to start of file
+                countedTimeout = (3.05, int(27 * mb_time_factor * (1 + f_size_mb)))
+
             if force_json:
-                data['text'] = file
+                data['text'] = file_text
                 r = self.session.post(
                     target_url,
                     data=data,
