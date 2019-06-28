@@ -52,6 +52,9 @@ class PoolParty:
         :param auth_data:
         :param session:
         :param server: server url
+        :param force_json If True, text is sent in the body of the post request in the "text" field of a json object.
+                          otherwise, it is sent as part of a form-data POST request, in a field named "file".
+
         :return: response object
         """
         lang = self.lang if lang == None else lang
@@ -60,7 +63,7 @@ class PoolParty:
         tmp_file.seek(0)
         return self.extract_from_file(tmp_file, pid, lang=lang, **kwargs)
 
-    def extract_from_file(self, file, pid, mb_time_factor=3, lang=None,
+    def extract_from_file(self, file, pid, mb_time_factor=3, lang=None, force_json=False,
                           **kwargs):
         """
         Make extract call using project determined by pid.
@@ -99,12 +102,18 @@ class PoolParty:
             countedTimeout = (3.05, int(27 * mb_time_factor * (1 + f_size_mb)))
             if self.timeout:
                 countedTimeout = self.timeout
-            r = self.session.post(
-                target_url,
-                data=data,
-                files={'file': file},
-                timeout=countedTimeout
-            )
+            if force_json:
+                data['text'] = file
+                r = self.session.post(
+                    target_url,
+                    data=data,
+                    timeout=countedTimeout)
+            else:
+                r = self.session.post(
+                    target_url,
+                    data=data,
+                    files={'file': file},
+                    timeout=countedTimeout)
         except Exception as e:
             module_logger.error(traceback.format_exc())
         finally:
@@ -292,19 +301,20 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             nif_doc.add_extracted_cpt(cpt)
         return nif_doc
 
-    def extract2nif(self, text_or_filename, pid, lang='en',
+
+    def extract2nif(self, text, pid, lang='en',
                     doc_uri="http://example.doc/" + str(uuid.uuid4()),
                     **kwargs):
-        if os.path.isfile(text_or_filename):
-            with open(text_or_filename) as f:
-                text = f.read()
-            r = self.extract_from_file(text_or_filename, pid, lang=lang,
-                                       **kwargs)
-        else:
-            text = text_or_filename
-            r = self.extract(text_or_filename, pid, lang=lang, **kwargs)
+
+        r = self.extract(text, pid, lang=lang, force_json=True, **kwargs)
         cpts = self.get_cpts_from_response(r)
         return self.format_nif(text, cpts, doc_uri=doc_uri)
+
+    def extract2nif_from_file(self,filename, **kwargs):
+        if os.path.isfile(filename):
+            with open(filename) as f:
+                text = f.read()
+            return self.extract2nif(text, **kwargs)
 
     def get_pref_labels(self, uris, pid, lang=None):
         """
