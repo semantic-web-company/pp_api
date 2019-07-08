@@ -31,3 +31,71 @@ def subdict(fromdict, fields, default=None,  force=False):
     if default is not None:
         force = True
     return { k: fromdict.get(k, default) for k in fields if k in fromdict or force }
+
+
+def check_status_and_raise(response, logger=None, data=None, log_text=False):
+    """
+    Call the raise_for_status() method of the response, which will
+    raise an HTTPError if an error response was received.
+    But enrich it with information from our API, and also log
+    the call parameters to module_logger.
+
+    :param response: `requests` response object
+    :param data: dictionary of call parameters, to include in log
+    :param log_text: If true, add the content of `response.text` to the log
+    :return: None
+    """
+
+    # Nothing to do on success
+    if response.status_code == requests.codes.ok:
+        return None
+
+    method = response.request.method
+    target_url = response.request.url
+
+    # json() chokes on empty response text, so bypass it
+    if response.text:
+        content = response.json()
+    else:
+        content = {}
+
+    # Our JSON error messages are labelled inconsistently:
+    # "errorMessage" for Extractor bad arguments?
+    message = content.get("errorMessage", "")
+    # "responseBase -> message" for "Concept Index is empty" == no extraction model
+    if not message and "responseBase" in content:
+        message = content["responseBase"].get("message", "")
+
+    # response.reason seems to be already included in the exception
+
+    if message:
+        extra = "API error message: {}\n".format(message)
+    else:
+        extra = None
+
+    # Log the error
+    logged = 'URL of the failed {} request: {}\n'.format(method, target_url)
+
+    if data:
+        logged += 'JSON data of the failed {} request: {}\n'.format(method, data)
+
+    # GraphSearch logging includes the `text` field:
+    if log_text and getattr(response, "text"):
+        logged += 'Response text: {}'.format(response.text)
+
+    # Add error details from json envelope, if we found any
+    if extra:
+        logged += extra
+
+    # Log it all
+    if logger:
+        logger.error(logged)
+
+    # If we have a message to add, capture and enrich the exception
+    if extra:
+        try:
+            response.raise_for_status()
+        except Exception as e:
+            raise type(e)(str(e) + "\n" + extra)
+    else:
+        response.raise_for_status()

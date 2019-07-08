@@ -14,14 +14,18 @@ def ppextract2matches(matches, tag=None, overlaps=True):
     apply overlapping offset-based annotations to a string.
 
     :param matches: An array of dicts as returned by pp_api.PoolParty.get_cpts_from_response().
-    :param tag:     A fixed tag to annotate with. If None, annotate with the
-                    prefLabel of each matched concept.
+    :param tag:     A fixed tag or tag pattern to annotate with.
+                    If None, annotate with the prefLabel of each matched concept.
+                    Tag patterns must use Python string.format variables, e.g.
+                    tag='<START:Beverage uri="{uri}">' for OpenNLP tag + url.
+                    FOR NOW, the closing tag is always <END>. (OpenNLP style)
     :param overlaps: Whether to include overlapping annotations in the results.
     :return:        A list of tuples (start, end, tag, content).
                     `start` and `end` are the character offsets. `content` is
                     the text content of this span, e.g. for error checking.
 
-    Note: pp_api.PoolParty.get_cpts_from_response() returns this structure:
+    Note: We consume the following data structure, returned by
+        pp_api.PoolParty.get_cpts_from_response().
 
     [
         {
@@ -42,17 +46,16 @@ def ppextract2matches(matches, tag=None, overlaps=True):
                         ]
                     ]
                 },
-                {
+                {                        <-- start of matching 2 of the first concept
                     "text": "something_else",
                     ...
 
     """
-    use_labels = bool(tag is None)
+    if tag is None:
+        tag = "{prefLabel}"
 
     edits = []
     for cpt_dict in matches:
-        if use_labels:
-            tag = cpt_dict["prefLabel"]
 
         # We can't annotate shadow concepts:
         if "matchings" not in cpt_dict:
@@ -60,7 +63,9 @@ def ppextract2matches(matches, tag=None, overlaps=True):
 
         for match in cpt_dict["matchings"]:
             for start, end in match["positions"]:
-                edits.append((start, end, tag, match["text"]))
+                # Support tag patterns with substitution
+                thistag = tag.format(**cpt_dict, start=start, end=end)
+                edits.append((start, end, thistag, match["text"]))
 
     if not overlaps:
         edits = remove_overlaps(edits)
