@@ -303,7 +303,6 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             nif_doc.add_extracted_cpt(cpt)
         return nif_doc
 
-
     def extract2nif(self, text, pid, lang='en',
                     doc_uri="http://example.doc/" + str(uuid.uuid4()),
                     **kwargs):
@@ -312,11 +311,30 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         cpts = self.get_cpts_from_response(r)
         return self.format_nif(text, cpts, doc_uri=doc_uri)
 
-    def extract2nif_from_file(self,filename, **kwargs):
+    def extract2nif_from_file(self, filename, **kwargs):
         if os.path.isfile(filename):
             with open(filename) as f:
                 text = f.read()
             return self.extract2nif(text, **kwargs)
+
+    def extract_nif(self, text, pid, lang=None,
+                    include_terms=False, include_concepts=True,
+                    prefix='doc.lynx-project.com'):
+        target_url = self.server + '/extractor/api/annotate/nif'
+        data = {
+            'input': text,
+            'prefix': prefix,
+            'includeTerms': include_terms,
+            'includeConcepts': include_concepts,
+            'projectId': pid
+        }
+        r = self.session.post(
+            target_url,
+            data=data,
+            timeout=self.timeout
+        )
+        self.raise_for_status(r, data)
+        return r
 
     def get_pref_labels(self, uris, pid, lang=None):
         """
