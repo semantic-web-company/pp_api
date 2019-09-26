@@ -333,7 +333,8 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             data=data,
             timeout=self.timeout
         )
-        self.raise_for_status(r, data)
+        r.raise_for_status()
+        # self.raise_for_status(r, data)
         return r
 
     def get_pref_labels(self, uris, pid, lang=None):
