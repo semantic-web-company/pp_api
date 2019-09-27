@@ -197,7 +197,7 @@ class PoolParty:
                     cpt_matching = {
                         'text': m['matchedText'],
                         'frequency': m['frequency'],
-                        'positions': [(x['beginningIndex'], x['endIndex'])
+                        'positions': [(x['beginningIndex'], x['endIndex']+1)
                                       for x in m['positions']]
                     }
                     cpt_matchings.append(cpt_matching)
@@ -328,6 +328,8 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             'includeConcepts': include_concepts,
             'projectId': pid
         }
+        if lang is not None:
+            data['lang'] = lang
         r = self.session.post(
             target_url,
             data=data,

@@ -43,7 +43,16 @@ class TestPP():
         text_path = (self.data_folder / 'question_1727.txt')
         with text_path.open() as f:
             text = f.read()
-        nif_output = self.pp.extract2nif(text_or_filename=text,
+        nif_output = self.pp.extract2nif(text=text,
+                                         pid=self.extract_args['pid'])
+        print(nif_output)
+        assert len(nif_output.split("nif:Phrase")) > 0
+
+    def test_ppnif_annotation(self):
+        text_path = (self.data_folder / 'question_1727.txt')
+        with text_path.open() as f:
+            text = f.read()
+        nif_output = self.pp.extract_nif(text=text,
                                          pid=self.extract_args['pid'])
         print(nif_output)
         assert len(nif_output.split("nif:Phrase")) > 0
