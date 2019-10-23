@@ -1,5 +1,7 @@
 import requests
 
+import simplejson
+
 from decouple import config
 
 
@@ -55,7 +57,10 @@ def check_status_and_raise(response, logger=None, data=None, log_text=False):
 
     # json() chokes on empty response text, so bypass it
     if response.text:
-        content = response.json()
+        try:
+            content = response.json()
+        except simplejson.errors.JSONDecodeError:
+            content = response.text
     else:
         content = {}
 
