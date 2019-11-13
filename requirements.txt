@@ -4,3 +4,4 @@ numpy
 rdflib
 SPARQLWrapper
 python_decouple
+simplejson
