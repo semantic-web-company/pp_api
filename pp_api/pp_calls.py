@@ -40,7 +40,7 @@ class PoolParty:
         self.timeout = timeout
         self.lang=lang
 
-    def extract(self, text, pid, lang=None, **kwargs):
+    def extract(self, text, pid=None, lang=None, **kwargs):
         """
         Make extract call using project determined by pid.
 
