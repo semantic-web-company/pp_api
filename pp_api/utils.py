@@ -1,7 +1,7 @@
 import requests
+from json import JSONDecodeError
 
 from decouple import config
-
 
 def get_session(session, auth_data):
     if session is None:
@@ -55,7 +55,12 @@ def check_status_and_raise(response, logger=None, data=None, log_text=False):
 
     # json() chokes on empty response text, so bypass it
     if response.text:
-        content = response.json()
+        try:
+            content = response.json()
+        except JSONDecodeError:
+            # Sometimes the error message is not json at all, but html;
+            # just wrap it for the benefit of later code
+            content = { "errorMessage": response.text }
     else:
         content = {}
 

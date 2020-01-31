@@ -11,27 +11,18 @@ from time import time
 
 module_logger = logging.getLogger(__name__)
 
-imported_nif = False
-try:
-    from nif.annotation import NIFDocument
-    imported_nif = True
-except ImportError:
-    module_logger.warning("""Nif module can not be imported. To import use\n
-      pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n
-      """)
 
-from pp_api import utils as u
+from pp_api import utils as _utils
 
 
 class PoolParty:
-    timeout = None
 
     def __init__(self, server, auth_data=None, session=None, max_retries=None, timeout=None, lang="en"):
         self.auth_data = auth_data
         if server.endswith("/"):
             server = server[:-1]
         self.server = server
-        self.session = u.get_session(session, auth_data)
+        self.session = _utils.get_session(session, auth_data)
         if max_retries is not None:
             retries = Retry(total=max_retries,
                             backoff_factor=0.3,
@@ -152,8 +143,7 @@ class PoolParty:
         :param data: dictionary of call parameters, to include in log
         :return: None
         """
-
-        u.check_status_and_raise(response, data=data, logger=module_logger)
+        _utils.check_status_and_raise(response, data=data, logger=module_logger)
 
 
     @staticmethod
@@ -292,11 +282,11 @@ class PoolParty:
         :param doc_uri:
         :return: NIFDocument
         """
-        if not imported_nif:            
-            raise ImportError("""
-                          nif module needs to be imported to use this method\n
-                          Please import with\n
-pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
+        try:
+            from nif import NIFDocument
+        except ImportError:
+            raise ImportError("""To use format_nif(), install the nif module with\n
+        pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
 
         nif_doc = NIFDocument.from_text(text, uri=doc_uri)
         for cpt in cpts:
@@ -605,7 +595,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             'language': lang
         }
         target_url = self.server + suffix
-        r = self.session.post(target_url, data=data)
+        r = self.session.post(target_url, data=data, timeout=self.timeout)
         self.raise_for_status(r, data)
         return r
 
@@ -686,12 +676,12 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         if workflowStatus:
             data["workflowStates"] = True
 
-        r = self.session.get(self.server + suffix, params=data)
+        r = self.session.get(self.server + suffix, params=data, timeout=self.timeout)
         self.raise_for_status(r, data)
         result = r.json()
         return result
 
-    def snapshot(self, pid, system=False, note=None):
+    def snapshot(self, pid, system=False, note=None, timeout=10):
         """
         Trigger a snapshot of the project specified by `pid`.
 
@@ -705,7 +695,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         if note:
             data["note"] = note
 
-        r = self.session.post(self.server + suffix, data=data)
+        r = self.session.post(self.server + suffix, data=data, timeout=timeout)
         self.raise_for_status(r, data)
         result = r.json()
         return result
@@ -731,7 +721,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
         if datatype:
             data["datatype"] = datatype
 
-        r = self.session.post(self.server + urlpath, data=data)
+        r = self.session.post(self.server + urlpath, data=data, timout=self.timeout)
         self.raise_for_status(r, data)
         return r
 
@@ -745,7 +735,7 @@ pip install -e git+git://github.com/semantic-web-company/nif.git#egg=nif\n""")
             'property': property,
             'target': target,
         }
-        r = self.session.post(self.server + urlpath, data=data)
+        r = self.session.post(self.server + urlpath, data=data, timeout=self.timeout)
         self.raise_for_status(r, data)
         return r
 
