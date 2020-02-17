@@ -1,9 +1,9 @@
 import requests
+from json import JSONDecodeError
 
 import simplejson
 
 from decouple import config
-
 
 def get_session(session, auth_data):
     if session is None:
@@ -60,7 +60,9 @@ def check_status_and_raise(response, logger=None, data=None, log_text=False):
         try:
             content = response.json()
         except simplejson.errors.JSONDecodeError:
-            content = response.text
+            # Sometimes the error message is not json at all, but html;
+            # just wrap it for the benefit of later code
+            content = { "errorMessage": response.text }
     else:
         content = {}
 
