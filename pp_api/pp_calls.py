@@ -148,7 +148,8 @@ class PoolParty:
 
     @staticmethod
     def get_cpts_from_response(r):
-        attributes = ['prefLabel', 'frequencyInDocument', 'uri',
+        # TODO: create a class ExtractedConcept
+        attributes = ['prefLabel', 'prefLabels', 'frequencyInDocument', 'uri',
                       'score',
                       'transitiveBroaderConcepts', 'transitiveBroaderTopConcepts',
                       'relatedConcepts']
@@ -185,6 +186,7 @@ class PoolParty:
                          [])
                 for m in ms:
                     cpt_matching = {
+                        'lemma': m['label'],
                         'text': m['matchedText'],
                         'frequency': m['frequency'],
                         'positions': [(x['beginningIndex'], x['endIndex']+1)
