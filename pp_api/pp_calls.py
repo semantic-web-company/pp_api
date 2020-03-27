@@ -187,7 +187,7 @@ class PoolParty:
                 for m in ms:
                     cpt_matching = {
                         'lemma': m['label'],
-                        'text': m['matchedText'],
+                        'text': cpt_json['matchingLabels']['matchedText'],
                         'frequency': m['frequency'],
                         'positions': [(x['beginningIndex'], x['endIndex']+1)
                                       for x in m['positions']]
