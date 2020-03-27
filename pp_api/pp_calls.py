@@ -182,17 +182,19 @@ class PoolParty:
                     cpt[attr] = []
             if 'matchingLabels' in cpt_json:
                 cpt_matchings = []
-                ms = sum([x['matchedTexts'] for x in cpt_json['matchingLabels']],
-                         [])
-                for m in ms:
-                    cpt_matching = {
-                        'lemma': cpt_json['matchingLabels']['label'],
-                        'text': m['matchedText'],
-                        'frequency': m['frequency'],
-                        'positions': [(x['beginningIndex'], x['endIndex']+1)
-                                      for x in m['positions']]
-                    }
-                    cpt_matchings.append(cpt_matching)
+                ms_labels = [(x['matchedTexts'], x['label'])
+                             for x in cpt_json['matchingLabels']]
+
+                for ms, label in ms_labels:
+                    for m in ms:
+                        cpt_matching = {
+                            'lemma': cpt_json['matchingLabels']['label'],
+                            'text': m['matchedText'],
+                            'frequency': m['frequency'],
+                            'positions': [(x['beginningIndex'], x['endIndex']+1)
+                                          for x in m['positions']]
+                        }
+                        cpt_matchings.append(cpt_matching)
                 cpt['matchings'] = cpt_matchings
             extr_cpts.append(cpt)
 
