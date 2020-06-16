@@ -68,7 +68,8 @@ def check_status_and_raise(response, logger=None, data=None, log_text=False):
 
     # Our JSON error messages are labelled inconsistently:
     # "errorMessage" for Extractor bad arguments?
-    message = content.get("errorMessage", "")
+    # "message" for add_custom_relation failure
+    message = content.get("errorMessage", "") or content.get("message", "")
     # "responseBase -> message" for "Concept Index is empty" == no extraction model
     if not message and "responseBase" in content:
         message = content["responseBase"].get("message", "")
