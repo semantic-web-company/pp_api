@@ -152,7 +152,7 @@ class PoolParty:
         attributes = ['prefLabel', 'prefLabels', 'frequencyInDocument', 'uri',
                       'score',
                       'transitiveBroaderConcepts', 'transitiveBroaderTopConcepts',
-                      'relatedConcepts']
+                      'relatedConcepts', 'conceptSchemes']
         # matchingLabels is checked and saved as well
         extr_cpts = []
         if r is None:
@@ -355,6 +355,29 @@ class PoolParty:
         )
         self.raise_for_status(r, data)
         return [x['prefLabel'] for x in r.json()]
+
+    def get_cpts_info(self, uris, pid, lang=None):
+        """
+        Get all available info of concepts that PP returns
+
+        :param uris:
+        :param pid: id of project
+        :return: response object
+        """
+        lang = self.lang if lang == None else lang
+        data = {
+            'concepts': uris,
+            'language': lang,
+            'properties': 'all'
+        }
+        target_url = self.server + '/PoolParty/api/thesaurus/{}/concepts'.format(pid)
+        r = self.session.get(
+            target_url,
+            params=data,
+            timeout=self.timeout
+        )
+        self.raise_for_status(r, data)
+        return r.json()
 
     def get_cpt_corpus_freqs(self, corpus_id, pid):
         """
