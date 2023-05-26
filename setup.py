@@ -12,7 +12,7 @@ dependencies = ["https://github.com/Project-PROFIT/nif.git@origin/master#egg=nif
 
 setup(
     name='pp_api',
-    version='18.0.0',
+    version='18.0.1',
     description='Library for accessing PoolParty APIs',
     packages=['pp_api'],
     license='MIT',

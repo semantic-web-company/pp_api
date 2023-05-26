@@ -2,7 +2,7 @@ import os
 import uuid
 
 import requests
-from requests.packages.urllib3.util.retry import Retry
+from urllib3.util import Retry
 from requests.adapters import HTTPAdapter
 import tempfile
 import logging
@@ -536,6 +536,25 @@ class PoolParty:
             if not len(r.json()):
                 break
         return results
+
+    def corpus_management_add_text(self, text, title, pid, corpusId, checkLanguage=True):
+        suffix = '/PoolParty/api/corpusmanagement/{pid}/add'.format(
+            pid=pid
+        )
+        target_url = self.server + suffix
+        data = {
+            'text': text,
+            'title': title,
+            'corpusId': corpusId,
+            'checkLanguage': checkLanguage,
+        }
+        r = self.session.post(
+            target_url,
+            data=data,
+            timeout=self.timeout
+        )
+        r.raise_for_status()
+        return r
 
     def export_project(self, pid):
         suffix = '/PoolParty/api/projects/{pid}/export'.format(
