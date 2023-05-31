@@ -14,7 +14,7 @@ setup(
     name='pp_api',
     version='18.1.0',
     description='Library for accessing PoolParty APIs',
-    packages=['pp_api'],
+    packages=['pp_api', 'pp_api.models'],
     license='MIT',
     dependency_links=dependencies,
     install_requires=requirements,
