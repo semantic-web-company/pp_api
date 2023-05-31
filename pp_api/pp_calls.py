@@ -1,6 +1,8 @@
+import dataclasses
 import os
 import uuid
 
+import rdflib.util
 import requests
 from urllib3.util import Retry
 from requests.adapters import HTTPAdapter
@@ -8,6 +10,7 @@ import tempfile
 import logging
 import traceback
 from time import time
+from pp_api.models.models import PoolPartyProject
 
 module_logger = logging.getLogger(__name__)
 
@@ -17,12 +20,17 @@ from pp_api import utils as _utils
 
 class PoolParty:
 
-    def __init__(self, server, auth_data=None, session=None, max_retries=None, timeout=None, lang="en"):
+    def __init__(self, server, auth_data=None, session=None, max_retries=None, timeout=None, lang="en", auth_type="basic_auth"):
         self.auth_data = auth_data
         if server.endswith("/"):
             server = server[:-1]
         self.server = server
-        self.session = _utils.get_session(session, auth_data)
+        if auth_type == "basic_auth":
+            self.session = _utils.get_session(session, auth_data)
+        elif auth_type == "oauth2":
+            self.session = _utils.get_oauth_session(session, auth_data)
+        else:
+            raise NotImplementedError
         if max_retries is not None:
             retries = Retry(total=max_retries,
                             backoff_factor=0.3,
@@ -679,6 +687,58 @@ class PoolParty:
         target_url = self.server + suffix
         r = self.session.post(target_url, data=data, timeout=self.timeout)
         self.raise_for_status(r, data)
+        return r
+
+    def create_project_json(self, poolPartyProject : PoolPartyProject):
+        suffix = "/PoolParty/api/projects/create"
+        json = poolPartyProject.to_dict()
+        target_url = self.server + suffix
+        r = self.session.post(target_url, json=json, timeout=self.timeout)
+        self.raise_for_status(r, json)
+        return r
+
+    def import_project(self, pid, triplesFilePath,  mimeType, defaultGraph=None, modules=None, overwrite=False):
+        suffix = "/PoolParty/api/projects/{project}/import".format(project=pid)
+        params = {
+            "overwrite": overwrite
+        }
+        if modules is not None:
+            params.update({"modules": modules})
+        if defaultGraph is not None:
+            params.update({"defaultGraph": defaultGraph})
+
+        files = [
+            ('file',
+             (os.path.basename(triplesFilePath),
+              open(triplesFilePath,'rb'),
+              'application/octet-stream')
+             )
+        ]
+        target_url = self.server + suffix
+        r = self.session.post(target_url, params=params, files=files, timeout=self.timeout)
+        self.raise_for_status(r)
+        return r
+
+    def delete_project(self, pid):
+        suffix = "/PoolParty/api/projects/{project}/delete".format(project=pid)
+        target_url = self.server + suffix
+        headers = {'Content-type': 'application/x-www-form-urlencoded'}
+        r = self.session.post(target_url, headers=headers, timeout=self.timeout)
+        self.raise_for_status(r)
+        return r
+
+    def get_extraction_model_status(self, pid):
+        suffix = "/PoolParty/api/indexbuilder/{project}".format(project=pid)
+        target_url = self.server + suffix
+        r = self.session.post(target_url, timeout=self.timeout)
+        self.raise_for_status(r)
+        return r
+
+    def refresh_extraction_model(self, pid):
+        suffix = "/PoolParty/api/indexbuilder/{project}/refresh".format(project=pid)
+        target_url = self.server + suffix
+        r = self.session.post(target_url, timeout=self.timeout)
+        self.raise_for_status(r)
         return r
 
     def add_narrower(self, pid, broader_uri, narrower_uri):

@@ -1,0 +1,15 @@
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+
+<http://localhost:8082/test/1> a skos:ConceptScheme;
+                               dcterms:title "Scheme"@en;
+                               skos:hasTopConcept <http://localhost:8082/test/2> .
+
+<http://localhost:8082/test/2> a skos:Concept;
+                               skos:topConceptOf <http://localhost:8082/test/1>;
+                               skos:prefLabel "Top"@en;
+                               skos:narrower <http://localhost:8082/test/3> .
+
+<http://localhost:8082/test/3> a skos:Concept;
+                               skos:prefLabel "Leaf"@en;
+                               skos:broader <http://localhost:8082/test/2> .

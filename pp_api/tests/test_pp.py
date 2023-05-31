@@ -19,6 +19,11 @@ class TestPP():
             'pid': config('chebi_pid')
         }
 
+    def setUpOAuth(self):
+        this_dir = Path(__file__).parent
+        self.data_folder = this_dir / 'data'
+        self.pp = PoolParty(server=config('server'), auth_type="oauth2")
+
     def do_extract(self, text_path):
         r = self.pp.extract_from_file(
             text_path.open(), **self.extract_args
@@ -70,3 +75,23 @@ class TestPP():
         )
         assert hasattr(scpts, '__len__')
         assert len(scpts) > 0
+
+    def test_create_project(self):
+        poolPartyProject = PoolPartyProject("en", "Test Project", ["Public"], repositoryType="memory")
+        result = self.pp.create_project_json(poolPartyProject)
+        self.projectId = result.json()["id"]
+        assert result.status_code == 201
+
+    def test_import_project_data(self):
+        triples_file_path = ( self.data_folder / 'minimal_taxonomy.ttl')
+        result = self.pp.import_project(self.projectId, triples_file_path, "text/turtle", defaultGraph="concepts")
+        assert result.status_code == 200
+
+    def test_refresh_extraction_model(self):
+        result = self.pp.refresh_extraction_model(self.projectId)
+        assert result.status_code == 200
+        assert result.json()["success"] == True
+
+    def test_delete_project(self):
+        result = self.pp.delete_project(self.projectId)
+        assert result.status_code == 200

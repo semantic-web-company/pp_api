@@ -4,6 +4,11 @@ from json import JSONDecodeError
 import simplejson
 
 from decouple import config
+from oauthlib.oauth2 import LegacyApplicationClient
+from requests_oauthlib import OAuth2Session
+from time import time
+
+saved_token = None
 
 def get_session(session, auth_data):
     if session is None:
@@ -21,6 +26,43 @@ def get_auth_data(env_username='PP_USER', env_password='PP_PASSWORD'):
     auth_data = (username, pw)
     assert username and pw
     return auth_data
+
+
+def get_oauth_session(session, auth_data):
+    def token_saver(token):
+        pass
+
+    if session is None:
+        if auth_data is None:
+            auth_data = get_auth_data_oauth2()
+    # fetch the initial token
+    session = OAuth2Session(client=LegacyApplicationClient(client_id=auth_data.client_id))
+    token = session.fetch_token(token_url=auth_data.token_url,
+                      username=auth_data.username, password=auth_data.password, client_id=auth_data.client_id,
+                      client_secret=auth_data.client_secret)
+    # set up the automatic refresh workflow
+    token["expires_at"] = time() - 10
+    session = OAuth2Session(client=LegacyApplicationClient(client_id=auth_data.client_id), client_id=auth_data.client_id, token=token, auto_refresh_url=auth_data.token_url, auto_refresh_kwargs=auth_data.__dict__, token_updater=token_saver)
+    return session
+
+
+class OAuthConfiguration:
+    def __init__(self, username, password, client_id, client_secret, token_url):
+        self.username = username
+        self.password = password
+        self.client_id = client_id
+        self.client_secret = client_secret
+        self.token_url = token_url
+
+
+def get_auth_data_oauth2(env_username='PP_USER', env_password='PP_PASSWORD', env_client_id='PP_CLIENT_ID', env_cliebt_secret='PP_CLIENT_SECRET', env_toke_url='PP_TOKEN_URL'):
+    username = config(env_username)
+    pw = config(env_password)
+    client_id = config(env_client_id)
+    client_secret = config(env_cliebt_secret)
+    token_url = config(env_toke_url)
+    oauth_configuration = OAuthConfiguration(username, pw, client_id, client_secret, token_url)
+    return oauth_configuration
 
 
 def subdict(fromdict, fields, default=None,  force=False):
@@ -49,7 +91,7 @@ def check_status_and_raise(response, logger=None, data=None, log_text=False):
     """
 
     # Nothing to do on success
-    if response.status_code == requests.codes.ok:
+    if response.status_code < 299:
         return None
 
     method = response.request.method
