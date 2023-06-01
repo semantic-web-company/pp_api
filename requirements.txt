@@ -5,3 +5,7 @@ rdflib
 SPARQLWrapper
 python_decouple
 simplejson
+urllib3
+setuptools
+oauthlib
+requests_oauthlib
