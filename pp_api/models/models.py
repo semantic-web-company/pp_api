@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field, asdict
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 
 @dataclass
@@ -8,7 +8,7 @@ class PoolPartyProject:
     title: str
     userGroups: []
     author: str = None
-    availableLanguages: list[str] = field(default_factory=list)
+    availableLanguages: List[str] = field(default_factory=list)
     baseUrl: str = None
     contributor: str = None
     description: str = None
