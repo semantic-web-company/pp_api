@@ -146,6 +146,9 @@ def check_status_and_raise(response, logger=None, data=None, log_text=False):
         try:
             response.raise_for_status()
         except Exception as e:
-            raise type(e)(str(e) + "\n" + extra)
+            with_extra = e.args[0] + "\n" + extra
+            e.args = (with_extra,) + e.args[1:]
+            # Re-raise the current exception
+            raise
     else:
         response.raise_for_status()
